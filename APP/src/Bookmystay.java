@@ -1,72 +1,109 @@
 import java.util.*;
 
-// Add-On Service class
-class Service {
-    private String serviceName;
-    private double cost;
-
-    public Service(String serviceName, double cost) {
-        this.serviceName = serviceName;
-        this.cost = cost;
-    }
-
-    public String getServiceName() {
-        return serviceName;
-    }
-
-    public double getCost() {
-        return cost;
+// Custom Exception
+class InvalidBookingException extends Exception {
+    public InvalidBookingException(String message) {
+        super(message);
     }
 }
 
-// Add-On Service Manager
-class AddOnServiceManager {
+// Reservation
+class Reservation {
+    private String guestName;
+    private String roomType;
 
-    private Map<String, List<Service>> serviceMap;
-
-    public AddOnServiceManager() {
-        serviceMap = new HashMap<>();
+    public Reservation(String guestName, String roomType) {
+        this.guestName = guestName;
+        this.roomType = roomType;
     }
 
-    // Add service to a reservation
-    public void addService(String reservationId, Service service) {
-        serviceMap
-                .computeIfAbsent(reservationId, k -> new ArrayList<>())
-                .add(service);
-
-        System.out.println("Added " + service.getServiceName()
-                + " to Reservation " + reservationId);
+    public String getGuestName() {
+        return guestName;
     }
 
-    // Display services for a reservation
-    public void displayServices(String reservationId) {
-        System.out.println("\n=== Services for Reservation " + reservationId + " ===");
+    public String getRoomType() {
+        return roomType;
+    }
+}
 
-        List<Service> services = serviceMap.get(reservationId);
+// Inventory
+class RoomInventory {
+    private Map<String, Integer> inventory;
 
-        if (services == null || services.isEmpty()) {
-            System.out.println("No services selected.");
-            return;
-        }
-
-        for (Service s : services) {
-            System.out.println(s.getServiceName() + " - Rs." + s.getCost());
-        }
+    public RoomInventory() {
+        inventory = new HashMap<>();
+        inventory.put("Single Room", 1);
+        inventory.put("Double Room", 1);
+        inventory.put("Suite Room", 0);
     }
 
-    // Calculate total additional cost
-    public double calculateTotalCost(String reservationId) {
-        double total = 0;
+    public int getAvailability(String roomType) {
+        return inventory.getOrDefault(roomType, -1);
+    }
 
-        List<Service> services = serviceMap.get(reservationId);
+    public void decrementRoom(String roomType) throws InvalidBookingException {
+        int available = getAvailability(roomType);
 
-        if (services != null) {
-            for (Service s : services) {
-                total += s.getCost();
-            }
+        if (available <= 0) {
+            throw new InvalidBookingException("No rooms available for " + roomType);
         }
 
-        return total;
+        inventory.put(roomType, available - 1);
+    }
+}
+
+// Validator
+class BookingValidator {
+
+    public static void validate(Reservation r, RoomInventory inventory)
+            throws InvalidBookingException {
+
+        // Check null or empty
+        if (r.getGuestName() == null || r.getGuestName().isEmpty()) {
+            throw new InvalidBookingException("Guest name cannot be empty");
+        }
+
+        if (r.getRoomType() == null || r.getRoomType().isEmpty()) {
+            throw new InvalidBookingException("Room type cannot be empty");
+        }
+
+        // Check valid room type
+        int availability = inventory.getAvailability(r.getRoomType());
+
+        if (availability == -1) {
+            throw new InvalidBookingException("Invalid room type selected");
+        }
+
+        // Check availability
+        if (availability <= 0) {
+            throw new InvalidBookingException("Selected room is not available");
+        }
+    }
+}
+
+// Booking Service
+class BookingService {
+
+    private RoomInventory inventory;
+
+    public BookingService(RoomInventory inventory) {
+        this.inventory = inventory;
+    }
+
+    public void confirmBooking(Reservation r) {
+        try {
+            // Validation (Fail Fast)
+            BookingValidator.validate(r, inventory);
+
+            // Allocate room
+            inventory.decrementRoom(r.getRoomType());
+
+            System.out.println("Booking Confirmed for " + r.getGuestName()
+                    + " (" + r.getRoomType() + ")");
+
+        } catch (InvalidBookingException e) {
+            System.out.println("Booking Failed: " + e.getMessage());
+        }
     }
 }
 
@@ -74,21 +111,19 @@ class AddOnServiceManager {
 public class Bookmystay {
     public static void main(String[] args) {
 
-        AddOnServiceManager manager = new AddOnServiceManager();
+        RoomInventory inventory = new RoomInventory();
+        BookingService service = new BookingService(inventory);
 
-        String reservationId = "RES-101";
+        // Valid booking
+        service.confirmBooking(new Reservation("Alice", "Single Room"));
 
-        // Adding services
-        manager.addService(reservationId, new Service("Breakfast", 500));
-        manager.addService(reservationId, new Service("Airport Pickup", 1000));
-        manager.addService(reservationId, new Service("Extra Bed", 800));
+        // Invalid room type
+        service.confirmBooking(new Reservation("Bob", "Luxury Room"));
 
-        // Display services
-        manager.displayServices(reservationId);
+        // No availability
+        service.confirmBooking(new Reservation("Charlie", "Suite Room"));
 
-        // Calculate total cost
-        double total = manager.calculateTotalCost(reservationId);
-
-        System.out.println("\nTotal Add-On Cost: Rs." + total);
+        // Empty name
+        service.confirmBooking(new Reservation("", "Double Room"));
     }
 }
