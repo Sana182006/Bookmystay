@@ -110,7 +110,7 @@ class RoomSearchService {
 }
 
 // Main Class
-public class Bookmystay{
+public class Bookmystay {
     public static void main(String[] args) {
 
         RoomInventory inventory = new RoomInventory();
