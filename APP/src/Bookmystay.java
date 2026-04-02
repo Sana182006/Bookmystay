@@ -1,7 +1,10 @@
+import java.io.*;
 import java.util.*;
 
-// Reservation
-class Reservation {
+// Reservation (Serializable)
+class Reservation implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private String reservationId;
     private String roomType;
 
@@ -17,92 +20,68 @@ class Reservation {
     public String getRoomType() {
         return roomType;
     }
+
+    public void display() {
+        System.out.println("ID: " + reservationId + ", Room: " + roomType);
+    }
 }
 
-// Inventory
-class RoomInventory {
+// Inventory (Serializable)
+class RoomInventory implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private Map<String, Integer> inventory;
 
     public RoomInventory() {
         inventory = new HashMap<>();
-        inventory.put("Single Room", 1);
+        inventory.put("Single Room", 2);
         inventory.put("Double Room", 1);
-        inventory.put("Suite Room", 1);
     }
 
-    public void incrementRoom(String roomType) {
-        inventory.put(roomType, inventory.getOrDefault(roomType, 0) + 1);
+    public Map<String, Integer> getInventory() {
+        return inventory;
     }
 
-    public void displayInventory() {
-        System.out.println("\n=== Current Inventory ===");
-        for (Map.Entry<String, Integer> e : inventory.entrySet()) {
-            System.out.println(e.getKey() + " : " + e.getValue());
-        }
+    public void display() {
+        System.out.println("Inventory: " + inventory);
     }
 }
 
-// Booking History (confirmed bookings)
-class BookingHistory {
-    private Map<String, Reservation> bookings;
+// Persistence Service
+class PersistenceService {
 
-    public BookingHistory() {
-        bookings = new HashMap<>();
-    }
+    private static final String FILE_NAME = "hotel_data.ser";
 
-    public void addBooking(Reservation r) {
-        bookings.put(r.getReservationId(), r);
-    }
+    // Save data
+    public static void saveData(List<Reservation> bookings, RoomInventory inventory) {
+        try (ObjectOutputStream out =
+                     new ObjectOutputStream(new FileOutputStream(FILE_NAME))) {
 
-    public Reservation getBooking(String id) {
-        return bookings.get(id);
-    }
+            out.writeObject(bookings);
+            out.writeObject(inventory);
 
-    public void removeBooking(String id) {
-        bookings.remove(id);
-    }
-}
+            System.out.println("Data saved successfully.");
 
-// Cancellation Service
-class CancellationService {
-
-    private BookingHistory history;
-    private RoomInventory inventory;
-    private Stack<String> rollbackStack;
-
-    public CancellationService(BookingHistory history, RoomInventory inventory) {
-        this.history = history;
-        this.inventory = inventory;
-        this.rollbackStack = new Stack<>();
-    }
-
-    public void cancelBooking(String reservationId) {
-
-        System.out.println("\nProcessing cancellation for: " + reservationId);
-
-        Reservation r = history.getBooking(reservationId);
-
-        // Validation
-        if (r == null) {
-            System.out.println("Cancellation Failed: Reservation not found");
-            return;
+        } catch (IOException e) {
+            System.out.println("Error saving data.");
         }
-
-        // Push room ID into rollback stack
-        rollbackStack.push(reservationId);
-
-        // Restore inventory
-        inventory.incrementRoom(r.getRoomType());
-
-        // Remove booking
-        history.removeBooking(reservationId);
-
-        System.out.println("Cancellation Successful for " + reservationId);
     }
 
-    public void displayRollbackStack() {
-        System.out.println("\n=== Rollback Stack ===");
-        System.out.println(rollbackStack);
+    // Load data
+    public static Object[] loadData() {
+        try (ObjectInputStream in =
+                     new ObjectInputStream(new FileInputStream(FILE_NAME))) {
+
+            List<Reservation> bookings = (List<Reservation>) in.readObject();
+            RoomInventory inventory = (RoomInventory) in.readObject();
+
+            System.out.println("Data loaded successfully.");
+            return new Object[]{bookings, inventory};
+
+        } catch (Exception e) {
+            System.out.println("No previous data found. Starting fresh.");
+            return null;
+        }
     }
 }
 
@@ -110,22 +89,33 @@ class CancellationService {
 public class Bookmystay {
     public static void main(String[] args) {
 
-        BookingHistory history = new BookingHistory();
-        RoomInventory inventory = new RoomInventory();
+        List<Reservation> bookings;
+        RoomInventory inventory;
 
-        // Simulate confirmed bookings
-        history.addBooking(new Reservation("RES-1", "Single Room"));
-        history.addBooking(new Reservation("RES-2", "Double Room"));
+        // Try loading existing data
+        Object[] data = PersistenceService.loadData();
 
-        CancellationService service = new CancellationService(history, inventory);
+        if (data != null) {
+            bookings = (List<Reservation>) data[0];
+            inventory = (RoomInventory) data[1];
+        } else {
+            bookings = new ArrayList<>();
+            inventory = new RoomInventory();
 
-        // Valid cancellation
-        service.cancelBooking("RES-1");
+            // Add sample data
+            bookings.add(new Reservation("RES-1", "Single Room"));
+            bookings.add(new Reservation("RES-2", "Double Room"));
+        }
 
-        // Invalid cancellation
-        service.cancelBooking("RES-3");
+        // Display current state
+        System.out.println("\n=== Current Bookings ===");
+        for (Reservation r : bookings) {
+            r.display();
+        }
 
-        service.displayRollbackStack();
-        inventory.displayInventory();
+        inventory.display();
+
+        // Save before exit (simulate shutdown)
+        PersistenceService.saveData(bookings, inventory);
     }
 }
