@@ -1,31 +1,55 @@
-/**
- * Hotel Booking Management System
- *
- * This class represents the entry point of the Book My Stay application.
- * It prints a welcome message along with application name and version.
- *
- * The program demonstrates how Java applications start execution
- * using the main() method.
- *
- * @author Student
- * @version 1.0
- */
+import java.util.HashMap;
+import java.util.Map;
+
+class RoomInventory {
+
+    private HashMap<String, Integer> inventory;
+
+    public RoomInventory() {
+        inventory = new HashMap<>();
+
+        inventory.put("Single Room", 5);
+        inventory.put("Double Room", 3);
+        inventory.put("Suite Room", 2);
+    }
+
+    public int getAvailability(String roomType) {
+        return inventory.getOrDefault(roomType, 0);
+    }
+
+    public void updateAvailability(String roomType, int newCount) {
+        if (inventory.containsKey(roomType)) {
+            inventory.put(roomType, newCount);
+        } else {
+            System.out.println("Room type not found.");
+        }
+    }
+
+    public void displayInventory() {
+        System.out.println("=== Current Room Inventory ===");
+        for (Map.Entry<String, Integer> entry : inventory.entrySet()) {
+            System.out.println(entry.getKey() + " : " + entry.getValue());
+        }
+    }
+}
 
 public class Bookmystay {
-
-    /**
-     * Main method - Entry point of the application
-     * JVM starts execution from this method
-     */
     public static void main(String[] args) {
 
-        // Display welcome message
-        System.out.println("====================================");
-        System.out.println("   Welcome to Book My Stay App");
-        System.out.println("   Hotel Booking System v1.0");
-        System.out.println("====================================");
+        RoomInventory inventory = new RoomInventory();
 
-        System.out.println("Application started successfully.");
-        System.out.println("Thank you for using Book My Stay!");
+        inventory.displayInventory();
+
+        System.out.println();
+
+        System.out.println("Available Single Rooms: " +
+                inventory.getAvailability("Single Room"));
+
+        System.out.println();
+
+        inventory.updateAvailability("Single Room", 4);
+
+        System.out.println("After Update:\n");
+        inventory.displayInventory();
     }
 }
